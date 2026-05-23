@@ -353,9 +353,47 @@ Important notes:
 
 Endpoint:
 
-`POST /api/revalidate?secret=SANITY_REVALIDATE_SECRET`
+`GET or POST /api/revalidate?secret=SANITY_REVALIDATE_SECRET`
 
-JSON body shape:
+Your route supports two production-safe modes.
+
+### Option A: Simple mode (recommended to start)
+
+Call without `tags` or `paths` and let the route use its default tags.
+
+```http
+GET /api/revalidate?secret=SANITY_REVALIDATE_SECRET
+```
+
+or
+
+```http
+POST /api/revalidate?secret=SANITY_REVALIDATE_SECRET
+Content-Type: application/json
+
+{}
+```
+
+Default tags currently used by the route:
+
+- `settings`
+- `page`
+- `post`
+- `product`
+- `products`
+- `seo`
+
+Use this mode when:
+
+- you want the easiest setup
+- your project is small to medium
+- you are okay with broader cache invalidation
+
+### Option B: Granular mode (recommended as project grows)
+
+Send explicit tags and/or paths from the webhook payload.
+
+JSON payload shape:
 
 ```json
 {
@@ -364,7 +402,61 @@ JSON body shape:
 }
 ```
 
-Use tags in your queries via `sanityFetch({ tags: [...] })` and trigger matching tags from Sanity webhooks.
+Use this mode when:
+
+- traffic is higher
+- you want tighter cache control
+- you only want to invalidate affected pages
+
+### Sanity webhook setup
+
+In Sanity Manage -> API -> Webhooks:
+
+1. URL: `https://your-domain.com/api/revalidate`
+2. Method: `POST`
+3. Header: `x-revalidate-secret: SANITY_REVALIDATE_SECRET`
+4. Trigger on: create, update, delete
+5. Filter to relevant types (for example: `page`, `post`, `product`, `settings`)
+
+### Suggested webhook payload templates
+
+Page update:
+
+```json
+{
+  "tags": ["page", "seo", "page:home"],
+  "paths": ["/"]
+}
+```
+
+Post update:
+
+```json
+{
+  "tags": ["post", "seo", "post:my-post-slug"],
+  "paths": ["/blog", "/blog/my-post-slug"]
+}
+```
+
+Product update:
+
+```json
+{
+  "tags": ["product", "products", "seo"],
+  "paths": ["/products", "/products/my-product-slug"]
+}
+```
+
+Settings update:
+
+```json
+{
+  "tags": ["settings", "seo"],
+  "paths": ["/"]
+}
+```
+
+Use tags in your queries via `sanityFetch({ tags: [...] })` and keep webhook tags aligned with query tags.
 
 ## 10. Adding a New Type (Reusable Pattern)
 
